@@ -90,7 +90,7 @@ public:
 					row[c] = 0;
 					score += 3;
 				} else if (pre == cur && pre != 1 && pre != 2) {
-					row[c-1] = pre + cur;
+					row[c-1] = pre + 1;
 					score += pow(3, row[c-1]);
 				}
 			}
