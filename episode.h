@@ -37,7 +37,7 @@ public:
 	}
 	agent& take_turns(agent& play, agent& evil) {
 		ep_time = millisec();
-		return (std::max(step() + 1, size_t(8)) % 2) ? play : evil;
+		return (std::max(step() + 1, size_t(9)) % 2) ? evil : play;
 	}
 	agent& last_turns(agent& play, agent& evil) {
 		return take_turns(evil, play);
