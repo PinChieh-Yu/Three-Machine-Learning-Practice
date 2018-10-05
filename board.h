@@ -91,6 +91,7 @@ public:
 					score += 3;
 				} else if (pre == cur && pre != 1 && pre != 2) {
 					row[c-1] = pre + 1;
+					row[c] = 0;
 					score += pow(3, row[c-1]);
 				}
 			}
@@ -157,10 +158,11 @@ public:
 
 public:
 	friend std::ostream& operator <<(std::ostream& out, const board& b) {
+		std::array<int, 15> sequence({0, 1, 2, 3, 6, 12, 24, 48, 96, 192, 384, 768, 1536, 3072, 6144});
 		out << "+------------------------+" << std::endl;
 		for (auto& row : b.tile) {
 			out << "|" << std::dec;
-			for (auto t : row) out << std::setw(6) << ((1 << t) & -2u);
+			for (auto t : row) out << std::setw(6) << sequence[t];
 			out << "|" << std::endl;
 		}
 		out << "+------------------------+" << std::endl;

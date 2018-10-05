@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <sstream>
 #include "board.h"
 #include "action.h"
 #include "agent.h"
@@ -64,11 +65,16 @@ int main(int argc, const char* argv[]) {
 
 		stat.open_episode(play.name() + ":" + evil.name());
 		episode& game = stat.back();
+
+		std::stringstream premove;
 		while (true) {
 			agent& who = game.take_turns(play, evil);
-			action move = who.take_action(game.state());
+			action move = who.take_action(game.state(), premove.str());
 			if (game.apply_action(move) != true) break;
 			if (who.check_for_win(game.state())) break;
+			premove.str(std::string());
+			premove.clear();
+			premove << move;
 		}
 		agent& win = game.last_turns(play, evil);
 		stat.close_episode(win.name());

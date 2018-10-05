@@ -22,7 +22,7 @@ public:
 	virtual ~agent() {}
 	virtual void open_episode(const std::string& flag = "") {}
 	virtual void close_episode(const std::string& flag = "") {}
-	virtual action take_action(const board& b) { return action(); }
+	virtual action take_action(const board& b, std::string last_op) { return action(); }
 	virtual bool check_for_win(const board& b) { return false; }
 
 public:
@@ -63,11 +63,33 @@ protected:
 class rndenv : public random_agent {
 public:
 	rndenv(const std::string& args = "") : random_agent("name=random role=environment " + args),
-		space({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }), bag({1, 2, 3}) {}
+		space({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }), left_edge({0, 4, 8, 12}), right_edge({3, 7, 11, 15}), 
+		up_edge({0, 1, 2, 3}), down_edge({12, 13, 14, 15}), bag({1, 2, 3}) {}
 
-	virtual action take_action(const board& after) {
-		std::shuffle(space.begin(), space.end(), engine);
-		for (int pos : space) {
+	virtual action take_action(const board& after, std::string last_op) {
+		int* data;
+		int length;
+		if (last_op == "#U") {
+			data = down_edge.data();
+			length = 4;
+		} else if (last_op == "#D") {
+			data = up_edge.data();
+			length = 4;
+		} else if (last_op == "#R") {
+			data = left_edge.data();
+			length = 4;
+		} else if (last_op == "#L") {
+			data = right_edge.data();
+			length = 4;
+		} else {
+			data = space.data();
+			length = 16;
+		}
+
+		std::shuffle(data, data+length, engine);
+
+		for (int i = 0; i < length; i++) {
+			int pos = data[i];
 			if (after(pos) != 0) continue;
 			if (!bag.size()) {
 				bag.insert(bag.end(), {1, 2, 3});
@@ -82,6 +104,10 @@ public:
 
 private:
 	std::array<int, 16> space;
+	std::array<int, 4> left_edge;
+	std::array<int, 4> right_edge;
+	std::array<int, 4> up_edge;
+	std::array<int, 4> down_edge;
 	std::vector<int> bag;
 };
 
@@ -94,7 +120,8 @@ public:
 	player(const std::string& args = "") : random_agent("name=dummy role=player " + args),
 		opcode({ 0, 1, 2, 3 }) {}
 
-	virtual action take_action(const board& before) {
+	virtual action take_action(const board& before, std::string last_op) {
+
 		std::shuffle(opcode.begin(), opcode.end(), engine);
 		for (int op : opcode) {
 			board::reward reward = board(before).slide(op);
