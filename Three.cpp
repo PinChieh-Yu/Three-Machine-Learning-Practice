@@ -81,6 +81,7 @@ int main(int argc, const char* argv[]) {
 
 		play.close_episode(win.name());
 		evil.close_episode(win.name());
+		evil.reset_bag();
 	}
 
 	if (summary) {

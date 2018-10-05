@@ -64,7 +64,7 @@ class rndenv : public random_agent {
 public:
 	rndenv(const std::string& args = "") : random_agent("name=random role=environment " + args),
 		space({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }), left_edge({0, 4, 8, 12}), right_edge({3, 7, 11, 15}), 
-		up_edge({0, 1, 2, 3}), down_edge({12, 13, 14, 15}), bag({1, 2, 3}) {}
+		up_edge({0, 1, 2, 3}), down_edge({12, 13, 14, 15}) {}
 
 	virtual action take_action(const board& after, std::string last_op) {
 		int* data;
@@ -91,8 +91,10 @@ public:
 		for (int i = 0; i < length; i++) {
 			int pos = data[i];
 			if (after(pos) != 0) continue;
-			if (!bag.size()) {
-				bag.insert(bag.end(), {1, 2, 3});
+			if (bag.empty()) {
+				bag.push_back(1);
+				bag.push_back(2);
+				bag.push_back(3);
 				std::shuffle(bag.begin(), bag.end(), engine);
 			}
 			board::cell tile = bag.back();
@@ -100,6 +102,10 @@ public:
 			return action::place(pos, tile);
 		}
 		return action();
+	}
+
+	void reset_bag(){
+		bag.clear();
 	}
 
 private:
@@ -121,7 +127,6 @@ public:
 		opcode({ 0, 1, 2, 3 }) {}
 
 	virtual action take_action(const board& before, std::string last_op) {
-
 		std::shuffle(opcode.begin(), opcode.end(), engine);
 		for (int op : opcode) {
 			board::reward reward = board(before).slide(op);
