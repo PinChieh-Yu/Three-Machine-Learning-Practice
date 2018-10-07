@@ -75,7 +75,6 @@ public:
 
 	reward slide_left() {
 		board prev = *this;
-		reward score = 0;
 		for (int r = 0; r < 4; r++) {
 			auto& row = tile[r];
 			int cur, pre;
@@ -88,15 +87,14 @@ public:
 				} else if ((pre == 1 && cur == 2) || (pre == 2 && cur == 1)){
 					row[c-1] = 3;
 					row[c] = 0;
-					score += 3;
 				} else if (pre == cur && pre != 1 && pre != 2) {
 					row[c-1] = pre + 1;
 					row[c] = 0;
-					score += pow(3, row[c-1]);
 				}
 			}
 		}
-		return (*this != prev) ? score : -1;
+		if (*this == prev) return -1;
+		return (*this).score() - prev.score();
 	}
 	reward slide_right() {
 		reflect_horizontal();
@@ -155,6 +153,16 @@ public:
 	void rotate_right() { transpose(); reflect_horizontal(); } // clockwise
 	void rotate_left() { transpose(); reflect_vertical(); } // counterclockwise
 	void reverse() { reflect_horizontal(); reflect_vertical(); }
+
+	reward score(){
+		reward s = 0;
+		for (auto& row : tile) {
+			for (auto t : row) {
+				if (t >= 3) s += pow(3.0, t-2);
+			}
+		}
+		return s;
+	}
 
 public:
 	friend std::ostream& operator <<(std::ostream& out, const board& b) {

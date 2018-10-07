@@ -138,3 +138,42 @@ public:
 private:
 	std::array<int, 4> opcode;
 };
+
+class smarter_player : public random_agent {
+public:
+	smarter_player(const std::string& args = "") : random_agent("name=smarter role=player " + args),
+		opcode({ 2, 1, 3, 0 }) {}
+
+	virtual action take_action(const board& before, std::string last_op) {
+		for (int op : opcode) {
+			board::reward reward = board(before).slide(op);
+			if (reward != -1) return action::slide(op);
+		}
+		return action();
+	}
+
+private:
+	std::array<int, 4> opcode;
+};
+
+class greedy_player : public random_agent {
+public:
+	greedy_player(const std::string& args = "") : random_agent("name=greedy role=player " + args),
+		opcode({ 0, 1, 2, 3 }) {}
+
+	virtual action take_action(const board& before, std::string last_op) {
+		int best_op;
+		board::reward best_reward = -1, reward;
+		for (int op : opcode) {
+			reward = board(before).slide(op);
+			if (reward > best_reward) {
+				best_op = op;
+				best_reward = reward;
+			}
+		}
+		return best_reward != -1 ? action::slide(best_op) : action();
+	}
+
+private:
+	std::array<int, 4> opcode;
+};
