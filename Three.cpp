@@ -56,7 +56,7 @@ int main(int argc, const char* argv[]) {
 		summary |= stat.is_finished();
 	}
 
-	greedy_player play(play_args);
+	player play(play_args);
 	rndenv evil(evil_args);
 
 	while (!stat.is_finished()) {
@@ -64,7 +64,7 @@ int main(int argc, const char* argv[]) {
 		evil.open_episode(play.name() + ":~");
 
 		stat.open_episode(play.name() + ":" + evil.name());
-		episode& game = stat.back();
+		episode& game = stat.back();	
 
 		std::stringstream premove;
 		while (true) {
@@ -77,8 +77,10 @@ int main(int argc, const char* argv[]) {
 			premove << move;
 		}
 		agent& win = game.last_turns(play, evil);
-		stat.close_episode(win.name());
+		
+		play.backward_train();
 
+		stat.close_episode(win.name());
 		play.close_episode(win.name());
 		evil.close_episode(win.name());
 		evil.reset_bag();

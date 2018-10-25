@@ -23,7 +23,7 @@ public:
 	typedef int reward;
 
 public:
-	board() : tile(), attr(0) {}
+	board() : tile({{{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}}}), attr(0) {}
 	board(const grid& b, data v = 0) : tile(b), attr(v) {}
 	board(const board& b) = default;
 	board& operator =(const board& b) = default;
@@ -56,7 +56,7 @@ public:
 		if (pos >= 16) return -1;
 		if (tile != 1 && tile != 2 && tile != 3) return -1;
 		operator()(pos) = tile;
-		return 0;
+		return (tile == 3) ? 3 : 0;
 	}
 
 	/**
@@ -74,27 +74,24 @@ public:
 	}
 
 	reward slide_left() {
-		board prev = *this;
+		board pre = (*this);
 		for (int r = 0; r < 4; r++) {
 			auto& row = tile[r];
-			int cur, pre;
 			for (int c = 1; c < 4; c++) {
-				cur = row[c];
-				pre = row[c-1];
-				if(pre == 0){
+				if(row[c-1] == 0){
 					row[c-1] = row[c];
 					row[c] = 0;
-				} else if ((pre == 1 && cur == 2) || (pre == 2 && cur == 1)){
+				} else if ((row[c-1] == 1 && row[c] == 2) || (row[c-1] == 2 && row[c] == 1)){
 					row[c-1] = 3;
 					row[c] = 0;
-				} else if (pre == cur && pre != 1 && pre != 2) {
-					row[c-1] = pre + 1;
+				} else if (row[c-1] == row[c] && row[c-1] != 1 && row[c-1] != 2) {
+					row[c-1]++;
 					row[c] = 0;
 				}
 			}
 		}
-		if (*this == prev) return -1;
-		return (*this).score() - prev.score();
+		if (pre == (*this)) return -1;
+		return score() - pre.score();
 	}
 	reward slide_right() {
 		reflect_horizontal();

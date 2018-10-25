@@ -9,6 +9,7 @@
 #include "board.h"
 #include "action.h"
 #include "agent.h"
+#include "weight.h"
 
 class statistic;
 
@@ -37,7 +38,7 @@ public:
 	}
 	agent& take_turns(agent& play, agent& evil) {
 		ep_time = millisec();
-		return (std::max(step() + 1, size_t(9)) % 2) ? evil : play;
+		return std::max(step() + 1, size_t(9)) % 2 ? evil : play;
 	}
 	agent& last_turns(agent& play, agent& evil) {
 		return take_turns(evil, play);
