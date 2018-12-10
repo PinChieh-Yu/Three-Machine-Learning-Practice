@@ -132,18 +132,17 @@ public:
 		{{{0,4,8,12,1,5},{1,5,9,13,2,6},{13,9,5,14,10,6},{15,11,7,14,10,6}}}}}) {}
 
 	virtual action take_action(const board& before, std::string last_op) {
-		//std::shuffle(opcode.begin(), opcode.end(), engine);
+
 		board after;
 		int hash; 
-		float reward, value;
+		int reward, final_reward = 0;
 		int final_op = -1; 
-		float final_reward = 0;
-		float highest_value = -2147483648;
+		float value, highest_value = -2147483648;
 
 		for (int op : opcode) { // four direction
 			after = board(before);
 			reward = after.slide(op);
-			if (reward >= 0) {
+			if (reward != -1) {
 				// hash the tuple
 				value = reward;
 				for(int i = 0; i < 8; i++){
@@ -155,7 +154,7 @@ public:
 						value += net[j][hash];
 					}
 				}
-				if (highest_value <= value) {
+				if (highest_value < value) {
 					final_op = op;
 					final_reward = reward;
 					highest_value = value;
@@ -252,7 +251,7 @@ public:
 
 private:
 	std::array<int, 4> opcode;
-	std::vector<float> reward_records;
+	std::vector<int> reward_records;
 	std::vector<board> board_records;
 	std::array<std::array<std::array<int, 6>, 4>, 8> tuples;
 };
