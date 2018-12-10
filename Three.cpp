@@ -66,15 +66,11 @@ int main(int argc, const char* argv[]) {
 		stat.open_episode(play.name() + ":" + evil.name());
 		episode& game = stat.back();	
 
-		std::stringstream premove;
 		while (true) {
 			agent& who = game.take_turns(play, evil);
-			action move = who.take_action(game.state(), premove.str());
+			action move = who.take_action(game.state());
 			if (game.apply_action(move) != true) break;
 			if (who.check_for_win(game.state())) break;
-			premove.str(std::string());
-			premove.clear();
-			premove << move;
 		}
 		agent& win = game.last_turns(play, evil);
 		

@@ -32,7 +32,6 @@ public:
 		}
 		return in.ignore(2);
 	}
-
 public:
 	operator unsigned() const { return code; }
 	unsigned type() const { return code & type_flag(-1u); }

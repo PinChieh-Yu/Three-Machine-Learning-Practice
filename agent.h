@@ -3,12 +3,14 @@
 #include <random>
 #include <sstream>
 #include <map>
+#include <unordered_map>
 #include <type_traits>
 #include <algorithm>
+#include <cmath>
+#include <fstream>
 #include "board.h"
 #include "action.h"
 #include "weight.h"
-#include <fstream>
 
 class agent {
 public:
@@ -23,7 +25,7 @@ public:
 	virtual ~agent() {}
 	virtual void open_episode(const std::string& flag = "") {}
 	virtual void close_episode(const std::string& flag = "") {}
-	virtual action take_action(const board& b, std::string last_op) { return action(); }
+	virtual action take_action(const board& b) { return action(); }
 	virtual bool check_for_win(const board& b) { return false; }
 
 public:
@@ -52,7 +54,13 @@ public:
 	virtual ~random_agent() {}
 
 protected:
+	float create_random_number() {
+		return unif(engine);
+	}
+
+protected:
 	std::default_random_engine engine;
+	std::uniform_real_distribution<float> unif(0.0, 1.0);
 };
 
 /**
@@ -76,9 +84,9 @@ public:
 protected:
 	virtual void init_weights(const std::string& info) {
 		net.emplace_back(0xFFFFFF+1); // create an empty weight table with size 65536
-		net.emplace_back(0xFFFFFF+1); // create an empty weight table with size 65536
-		net.emplace_back(0xFFFFFF+1); // create an empty weight table with size 65536
-		net.emplace_back(0xFFFFFF+1); // create an empty weight table with size 65536
+		net.emplace_back(0xFFFFFF+1);
+		net.emplace_back(0xFFFFFF+1);
+		net.emplace_back(0xFFFFFF+1);
 	}
 	virtual void load_weights(const std::string& path) {
 		std::ifstream in(path, std::ios::in | std::ios::binary);
@@ -131,10 +139,11 @@ public:
 		{{{12,13,14,15,8,9},{8,9,10,11,4,5},{11,10,9,7,6,5},{3,2,1,7,6,5}}},
 		{{{0,4,8,12,1,5},{1,5,9,13,2,6},{13,9,5,14,10,6},{15,11,7,14,10,6}}}}}) {}
 
-	virtual action take_action(const board& before, std::string last_op) {
+	virtual action take_action(const board& before) {
 
 		board after;
-		int hash; 
+		int hash;
+		int hint = before.hint;
 		int reward, final_reward = 0;
 		int final_op = -1; 
 		float value, highest_value = -2147483648;
@@ -265,21 +274,22 @@ class rndenv : public random_agent {
 public:
 	rndenv(const std::string& args = "") : random_agent("name=random role=environment " + args),
 		space({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }), left_edge({0, 4, 8, 12}), right_edge({3, 7, 11, 15}), 
-		up_edge({0, 1, 2, 3}), down_edge({12, 13, 14, 15}) {}
+		up_edge({0, 1, 2, 3}), down_edge({12, 13, 14, 15}) { next = get_tile_from_bag(); }
 
-	virtual action take_action(const board& after, std::string last_op) {
+	virtual action take_action(const board& after) {
 		int* data;
-		int length;
-		if (last_op == "#U") {
+		int last_op = after.last_op, length;
+
+		if (last_op == 1) { //#U
 			data = down_edge.data();
 			length = 4;
-		} else if (last_op == "#D") {
+		} else if (last_op == 2) { //#D
 			data = up_edge.data();
 			length = 4;
-		} else if (last_op == "#R") {
+		} else if (last_op == 3) { //#R
 			data = left_edge.data();
 			length = 4;
-		} else if (last_op == "#L") {
+		} else if (last_op == 4) { //#L
 			data = right_edge.data();
 			length = 4;
 		} else {
@@ -287,26 +297,45 @@ public:
 			length = 16;
 		}
 
-		std::shuffle(data, data+length, engine);
+		after.last_op = 0;
 
+		std::shuffle(data, data+length, engine);
+		int pos;
 		for (int i = 0; i < length; i++) {
-			int pos = data[i];
-			if (after(pos) != 0) continue;
-			if (bag.empty()) {
-				bag.push_back(1);
-				bag.push_back(2);
-				bag.push_back(3);
-				std::shuffle(bag.begin(), bag.end(), engine);
+			pos = data[i];
+			if (after(pos) == 0) {
+				uint32_t tmp = next;
+				int max = after.max_cell();
+				if (after.max_cell() >= 7 && create_random_number() < (1.0f / 21)) {
+					next = std::round(4+create_random_number()*(max-7));
+				} else {
+					next = get_tile_from_bag();
+				}
+				after.hint = next;
+				return action::place(pos, tmp);
 			}
-			board::cell tile = bag.back();
-			bag.pop_back();
-			return action::place(pos, tile);
 		}
 		return action();
 	}
 
 	void reset_bag(){
 		bag.clear();
+		next = get_tile_from_bag();
+	}
+
+private:
+	board::cell get_tile_from_bag() {
+		if (bag.empty()) {
+			for(int i = 0; i < 4; i++){
+				bag.push_back(1);
+				bag.push_back(2);
+				bag.push_back(3);
+			}
+			std::shuffle(bag.begin(), bag.end(), engine);
+		}
+		board::cell tile = bag.back();
+		bag.pop_back();
+		return tile;
 	}
 
 private:
@@ -316,4 +345,5 @@ private:
 	std::array<int, 4> up_edge;
 	std::array<int, 4> down_edge;
 	std::vector<int> bag;
+	uint32_t next;
 };

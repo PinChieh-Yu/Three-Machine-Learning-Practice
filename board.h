@@ -23,8 +23,8 @@ public:
 	typedef int reward;
 
 public:
-	board() : tile({{{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}}}), attr(0) {}
-	board(const grid& b, data v = 0) : tile(b), attr(v) {}
+	board() : tile({{{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}}}), attr(0), last_op(0) {}
+	board(const grid& b, data v = 0) : tile(b), attr(v), last_op(0) {}
 	board(const board& b) = default;
 	board& operator =(const board& b) = default;
 
@@ -54,7 +54,6 @@ public:
 	 */
 	reward place(unsigned pos, cell tile) {
 		if (pos >= 16) return -1;
-		if (tile != 1 && tile != 2 && tile != 3) return -1;
 		operator()(pos) = tile;
 		return (tile == 3) ? 3 : 0;
 	}
@@ -64,12 +63,13 @@ public:
 	 * return the reward of the action, or -1 if the action is illegal
 	 */
 	reward slide(unsigned opcode) {
-		switch (opcode & 0b11) {
-		case 0: return slide_up();
-		case 1: return slide_right();
-		case 2: return slide_down();
-		case 3: return slide_left();
-		default: return -1;
+		last_op = opcode & 0b11;
+		switch (last_op) {
+			case 0: return slide_up();
+			case 1: return slide_right();
+			case 2: return slide_down();
+			case 3: return slide_left();
+			default: return -1;
 		}
 	}
 
@@ -161,6 +161,16 @@ public:
 		return s;
 	}
 
+	cell max_cell() {
+		cell max = 0;
+		for (auto& row : tile) {
+			for (auto t : row) {
+				if (t > max) max = t;
+			}
+		}
+		return max;
+	}
+
 public:
 	friend std::ostream& operator <<(std::ostream& out, const board& b) {
 		std::array<int, 15> sequence({0, 1, 2, 3, 6, 12, 24, 48, 96, 192, 384, 768, 1536, 3072, 6144});
@@ -173,7 +183,9 @@ public:
 		out << "+------------------------+" << std::endl;
 		return out;
 	}
-
+public:
+	int last_op;
+	int hint;
 private:
 	grid tile;
 	data attr;
