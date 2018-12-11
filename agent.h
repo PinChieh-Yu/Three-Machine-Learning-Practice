@@ -25,7 +25,7 @@ public:
 	virtual ~agent() {}
 	virtual void open_episode(const std::string& flag = "") {}
 	virtual void close_episode(const std::string& flag = "") {}
-	virtual action take_action(const board& b) { return action(); }
+	virtual action take_action(const board& b, int& hint) { return action(); }
 	virtual bool check_for_win(const board& b) { return false; }
 
 public:
@@ -47,7 +47,7 @@ protected:
 
 class random_agent : public agent {
 public:
-	random_agent(const std::string& args = "") : agent(args) {
+	random_agent(const std::string& args = "") : agent(args), unif(0.0, 1.0) {
 		if (meta.find("seed") != meta.end())
 			engine.seed(int(meta["seed"]));
 	}
@@ -60,7 +60,7 @@ protected:
 
 protected:
 	std::default_random_engine engine;
-	std::uniform_real_distribution<float> unif(0.0, 1.0);
+	std::uniform_real_distribution<float> unif;
 };
 
 /**
@@ -139,11 +139,10 @@ public:
 		{{{12,13,14,15,8,9},{8,9,10,11,4,5},{11,10,9,7,6,5},{3,2,1,7,6,5}}},
 		{{{0,4,8,12,1,5},{1,5,9,13,2,6},{13,9,5,14,10,6},{15,11,7,14,10,6}}}}}) {}
 
-	virtual action take_action(const board& before) {
+	virtual action take_action(const board& before, int& hint) {
 
 		board after;
 		int hash;
-		int hint = before.hint;
 		int reward, final_reward = 0;
 		int final_op = -1; 
 		float value, highest_value = -2147483648;
@@ -276,20 +275,20 @@ public:
 		space({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }), left_edge({0, 4, 8, 12}), right_edge({3, 7, 11, 15}), 
 		up_edge({0, 1, 2, 3}), down_edge({12, 13, 14, 15}) { next = get_tile_from_bag(); }
 
-	virtual action take_action(const board& after) {
+	virtual action take_action(const board& after, int& hint) {
 		int* data;
 		int last_op = after.last_op, length;
 
-		if (last_op == 1) { //#U
+		if (last_op == 0) { //#U
 			data = down_edge.data();
+			length = 4;
+		} else if (last_op == 1) { //#R
+			data = left_edge.data();
 			length = 4;
 		} else if (last_op == 2) { //#D
 			data = up_edge.data();
 			length = 4;
-		} else if (last_op == 3) { //#R
-			data = left_edge.data();
-			length = 4;
-		} else if (last_op == 4) { //#L
+		} else if (last_op == 3) { //#L
 			data = right_edge.data();
 			length = 4;
 		} else {
@@ -297,21 +296,19 @@ public:
 			length = 16;
 		}
 
-		after.last_op = 0;
-
 		std::shuffle(data, data+length, engine);
-		int pos;
+		int pos, max;
 		for (int i = 0; i < length; i++) {
 			pos = data[i];
 			if (after(pos) == 0) {
 				uint32_t tmp = next;
-				int max = after.max_cell();
-				if (after.max_cell() >= 7 && create_random_number() < (1.0f / 21)) {
+				max = after.max_cell();
+				if (max >= 7 && create_random_number() <= (1.0f / 21.0f)) {
 					next = std::round(4+create_random_number()*(max-7));
 				} else {
 					next = get_tile_from_bag();
 				}
-				after.hint = next;
+				hint = next;
 				return action::place(pos, tmp);
 			}
 		}

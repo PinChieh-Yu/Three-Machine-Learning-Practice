@@ -5,7 +5,7 @@
 #include <cmath>
 
 /**
- * array-based board for 2048
+ * array-based board for Three
  *
  * index (1-d form):
  *  (0)  (1)  (2)  (3)
@@ -23,8 +23,8 @@ public:
 	typedef int reward;
 
 public:
-	board() : tile({{{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}}}), attr(0), last_op(0) {}
-	board(const grid& b, data v = 0) : tile(b), attr(v), last_op(0) {}
+	board() : last_op(0), tile({{{0,0,0,0},{0,0,0,0},{0,0,0,0},{0,0,0,0}}}), attr(0) {}
+	board(const grid& b, data v = 0) : last_op(0), tile(b), attr(v) {}
 	board(const board& b) = default;
 	board& operator =(const board& b) = default;
 
@@ -53,6 +53,7 @@ public:
 	 * return 0 if the action is valid, or -1 if not
 	 */
 	reward place(unsigned pos, cell tile) {
+		last_op = 4;
 		if (pos >= 16) return -1;
 		operator()(pos) = tile;
 		return (tile == 3) ? 3 : 0;
@@ -63,8 +64,8 @@ public:
 	 * return the reward of the action, or -1 if the action is illegal
 	 */
 	reward slide(unsigned opcode) {
-		last_op = opcode & 0b11;
-		switch (last_op) {
+		last_op = (opcode & 0b11);
+		switch (opcode & 0b11) {
 			case 0: return slide_up();
 			case 1: return slide_right();
 			case 2: return slide_down();
@@ -151,7 +152,7 @@ public:
 	void rotate_left() { transpose(); reflect_vertical(); } // counterclockwise
 	void reverse() { reflect_horizontal(); reflect_vertical(); }
 
-	reward score(){
+	reward score() const {
 		reward s = 0;
 		for (auto& row : tile) {
 			for (auto t : row) {
@@ -161,7 +162,7 @@ public:
 		return s;
 	}
 
-	cell max_cell() {
+	cell max_cell() const {
 		cell max = 0;
 		for (auto& row : tile) {
 			for (auto t : row) {
@@ -185,7 +186,6 @@ public:
 	}
 public:
 	int last_op;
-	int hint;
 private:
 	grid tile;
 	data attr;

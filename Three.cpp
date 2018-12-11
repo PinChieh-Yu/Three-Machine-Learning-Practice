@@ -59,6 +59,7 @@ int main(int argc, const char* argv[]) {
 	player play(play_args);
 	rndenv evil(evil_args);
 
+	int cur_hint;
 	while (!stat.is_finished()) {
 		play.open_episode("~:" + evil.name());
 		evil.open_episode(play.name() + ":~");
@@ -68,7 +69,7 @@ int main(int argc, const char* argv[]) {
 
 		while (true) {
 			agent& who = game.take_turns(play, evil);
-			action move = who.take_action(game.state());
+			action move = who.take_action(game.state(), cur_hint);
 			if (game.apply_action(move) != true) break;
 			if (who.check_for_win(game.state())) break;
 		}
