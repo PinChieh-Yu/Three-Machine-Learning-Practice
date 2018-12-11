@@ -83,10 +83,10 @@ public:
 
 protected:
 	virtual void init_weights(const std::string& info) {
-		net.emplace_back(0xFFFFFF+1); // create an empty weight table with size 65536
-		net.emplace_back(0xFFFFFF+1);
-		net.emplace_back(0xFFFFFF+1);
-		net.emplace_back(0xFFFFFF+1);
+		net.emplace_back(); // create an empty weight table with size 65536
+		net.emplace_back();
+		net.emplace_back();
+		net.emplace_back();
 	}
 	virtual void load_weights(const std::string& path) {
 		std::ifstream in(path, std::ios::in | std::ios::binary);
@@ -145,7 +145,7 @@ public:
 		int hash;
 		int reward, final_reward = 0;
 		int final_op = -1; 
-		float value, highest_value = -2147483648;
+		double value, highest_value = -2147483648;
 
 		for (int op : opcode) { // four direction
 			after = board(before);
@@ -159,7 +159,7 @@ public:
 						for(int k = 0; k < 6; k++){
 							hash = hash * 16 + after(tuples[i][j][k]);
 						}
-						value += net[j][hash];
+						value += net[j].getvalue(hash);
 					}
 				}
 				if (highest_value < value) {
@@ -184,7 +184,7 @@ public:
 	void backward_train() {
 		int hash;
 		board cur, prev;
-		float cur_value, pre_value, result;
+		double cur_value, pre_value, result;
 
 		//update end board
 		prev = board_records.back();
@@ -195,7 +195,7 @@ public:
 				for(int k = 0; k < 6; k++){
 					hash = hash * 16 + prev(tuples[i][j][k]);
 				}
-				pre_value += net[j][hash];
+				pre_value += net[j].getvalue(hash);
 			}
 		}
 		result = (0 - pre_value) * alpha / (8 * 4 * 6);
@@ -205,7 +205,7 @@ public:
 				for(int k = 0; k < 6; k++){
 					hash = hash * 16 + prev(tuples[i][j][k]);
 				}
-				net[j][hash] += result;
+				net[j].update(hash, result);
 			}
 		}
 
@@ -222,7 +222,7 @@ public:
 					for(int k = 0; k < 6; k++){
 						hash = hash * 16 + cur(tuples[i][j][k]);
 					}
-					cur_value += net[j][hash];
+					cur_value += net[j].getvalue(hash);
 				}
 			}
 
@@ -236,7 +236,7 @@ public:
 					for(int k = 0; k < 6; k++){
 						hash = hash * 16 + prev(tuples[i][j][k]);
 					}
-					pre_value += net[j][hash];
+					pre_value += net[j].getvalue(hash);
 				}
 			}
 
@@ -248,7 +248,8 @@ public:
 					for(int k = 0; k < 6; k++){
 						hash = hash * 16 + prev(tuples[i][j][k]);
 					}
-					net[j][hash] += result;
+					//net[j][hash] += result;
+					net[j].update(hash, result);
 				}
 			}
 		}
