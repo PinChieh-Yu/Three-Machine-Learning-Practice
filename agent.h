@@ -83,10 +83,10 @@ public:
 
 protected:
 	virtual void init_weights(const std::string& info) {
-		net.emplace_back(); // create an empty weight table with size 65536
-		net.emplace_back();
-		net.emplace_back();
-		net.emplace_back();
+		net.emplace_back(0xFFFFFFF * 4); // create an empty weight table with size 65536
+		net.emplace_back(0xFFFFFFF * 4);
+		net.emplace_back(0xFFFFFFF * 4);
+		net.emplace_back(0xFFFFFFF * 4);
 	}
 	virtual void load_weights(const std::string& path) {
 		std::ifstream in(path, std::ios::in | std::ios::binary);
@@ -142,7 +142,7 @@ public:
 	virtual action take_action(const board& before, int& hint) {
 
 		board after;
-		int hash;
+		unsigned int hash;
 		int reward, final_reward = 0;
 		int final_op = -1; 
 		double value, highest_value = -2147483648;
@@ -157,9 +157,10 @@ public:
 					for(int j = 0; j < 4; j++){
 						hash = 0;
 						for(int k = 0; k < 6; k++){
-							hash = hash * 16 + after(tuples[i][j][k]);
+							hash = (hash << 4) + after(tuples[i][j][k]);
 						}
-						value += net[j].getvalue(hash);
+						hash = (hash << 6) + (op << 4) + hint;
+						value += net[j][hash];
 					}
 				}
 				if (highest_value < value) {
@@ -175,6 +176,8 @@ public:
 			after.slide(final_op);
 			board_records.push_back(after);
 			reward_records.push_back(final_reward);
+			hint_records.push_back(hint);
+			move_records.push_back(final_op);
 			return action::slide(final_op);
 		}
 
@@ -182,86 +185,103 @@ public:
 	}
 
 	void backward_train() {
-		int hash;
-		board cur, prev;
-		double cur_value, pre_value, result;
+		unsigned int hash;
+		int pre_move, cur_move, pre_hint, cur_hint;
+		board pre_board, cur_board;
+		double pre_value, cur_value, result;
 
 		//update end board
-		prev = board_records.back();
+		pre_board = board_records.back();
+		pre_move = move_records.back();
+		pre_hint = hint_records.back();
+		board_records.pop_back();
+		move_records.pop_back();
+		hint_records.pop_back();
 		pre_value = 0;
 		for(int i = 0; i < 8; i++){
 			for(int j = 0; j < 4; j++){
 				hash = 0;
 				for(int k = 0; k < 6; k++){
-					hash = hash * 16 + prev(tuples[i][j][k]);
+					hash = (hash << 4) + pre_board(tuples[i][j][k]);
 				}
-				pre_value += net[j].getvalue(hash);
+				hash = (hash << 6) + (pre_move << 4) + pre_hint;
+				pre_value += net[j][hash];
 			}
 		}
-		result = (0 - pre_value) * alpha / (8 * 4 * 6);
+		result = (0 - pre_value) * alpha / 192;
 		for(int i = 0; i < 8; i++){
 			for(int j = 0; j < 4; j++){
 				hash = 0;
 				for(int k = 0; k < 6; k++){
-					hash = hash * 16 + prev(tuples[i][j][k]);
+					hash = (hash << 4) + pre_board(tuples[i][j][k]);
 				}
-				net[j].update(hash, result);
+				hash = (hash << 6) + (pre_move << 4) + pre_hint;
+				net[j][hash] += result;
 			}
 		}
 
 		//start backward train
 		while (board_records.size() > 1) {
-			cur = board_records.back();
+			cur_board = pre_board;
+			cur_move = pre_move;
+			cur_hint = pre_hint;
+			pre_board = board_records.back();
+			pre_move = move_records.back();
+			pre_hint = hint_records.back();
 			board_records.pop_back();
-			prev = board_records.back();
+			move_records.pop_back();
+			hint_records.pop_back();
 
 			cur_value = 0;
+			pre_value = 0;
 			for(int i = 0; i < 8; i++){
 				for(int j = 0; j < 4; j++){
 					hash = 0;
 					for(int k = 0; k < 6; k++){
-						hash = hash * 16 + cur(tuples[i][j][k]);
+						hash = (hash << 4) + cur_board(tuples[i][j][k]);
 					}
-					cur_value += net[j].getvalue(hash);
+					hash = (hash << 6) + (cur_move << 4) + cur_hint;
+					cur_value += net[j][hash];
+				}
+				for(int j = 0; j < 4; j++){
+					hash = 0;
+					for(int k = 0; k < 6; k++){
+						hash = (hash << 4) + pre_board(tuples[i][j][k]);
+					}
+					hash = (hash << 6) + (pre_move << 4) + pre_hint;
+					pre_value += net[j][hash];
 				}
 			}
 
 			cur_value += reward_records.back();
 			reward_records.pop_back();
 
-			pre_value = 0;
-			for(int i = 0; i < 8; i++){
-				for(int j = 0; j < 4; j++){
-					hash = 0;
-					for(int k = 0; k < 6; k++){
-						hash = hash * 16 + prev(tuples[i][j][k]);
-					}
-					pre_value += net[j].getvalue(hash);
-				}
-			}
-
-			result = (cur_value - pre_value) * alpha / (8 * 4 * 6);
+			result = (cur_value - pre_value) * alpha / 192;
 
 			for(int i = 0; i < 8; i++){
 				for(int j = 0; j < 4; j++){
 					hash = 0;
 					for(int k = 0; k < 6; k++){
-						hash = hash * 16 + prev(tuples[i][j][k]);
+						hash = (hash << 4) + pre_board(tuples[i][j][k]);
 					}
-					//net[j][hash] += result;
-					net[j].update(hash, result);
+					hash = (hash << 6) + (pre_move << 4) + pre_hint;
+					net[j][hash] += result;
 				}
 			}
 		}
 
 		reward_records.clear();
 		board_records.clear();
+		hint_records.clear();
+		move_records.clear();
 	}
 
 private:
 	std::array<int, 4> opcode;
 	std::vector<int> reward_records;
 	std::vector<board> board_records;
+	std::vector<int> hint_records;
+	std::vector<int> move_records;
 	std::array<std::array<std::array<int, 6>, 4>, 8> tuples;
 };
 /**
